@@ -1,26 +1,23 @@
-import { Component, Injectable } from '@angular/core';
+import { Component, Inject, Injectable } from '@angular/core';
 import { Barcode, BarcodePicker, Camera, CameraAccess, CameraSettings, ScanResult, ScanSettings } from "scandit-sdk";
-import { BarcodeScannerComponent} from './barcode-scanner/barcode-scanner.component';
-import { faCoffee } from '@fortawesome/free-solid-svg-icons';
-import { AddToCartComponent, ModalService } from '@spartacus/storefront';
-import { AddToCartModule} from '@spartacus/storefront';
-import { CartAddEntry } from '@spartacus/core/src/cart/store/actions/cart-entry.action';
+import { MatIconRegistry } from "@angular/material/icon";
+import { DomSanitizer } from "@angular/platform-browser";
 import { AddToCartService } from './add-to-cart.service';
+import { GetSvgBarcodeService } from './get-svg-barcode.service';
+import { SearchArea } from 'scandit-sdk/build/main/lib/searchArea';
 
 @Component({
-  selector: 'my-app',
+  selector: 'scandit-app',
   templateUrl: './app.component.html',
   styleUrls: [ './app.component.css' ]
 })
+
 @Injectable({providedIn:'root'})
 export class AppComponent  {
-  name = 'Angular';
-  faCoffee = faCoffee;
 
   public activeSettings: ScanSettings;
-  public settings128: ScanSettings;
-  public settings39: ScanSettings;
-  public scannerGuiStyle: BarcodePicker.GuiStyle = BarcodePicker.GuiStyle.VIEWFINDER;
+  public settingsSymbologies: ScanSettings;
+  public scannerGuiStyle: BarcodePicker.GuiStyle = BarcodePicker.GuiStyle.LASER;
   public activeCamera: Camera;
   public cameraSettings: CameraSettings;
   public scanningPaused: boolean = false;
@@ -38,24 +35,24 @@ export class AppComponent  {
   public enableVibrateOnScan: boolean = true;
   public cameraAccess: boolean = true;
   public enableSoundOnScan: boolean = true;
-
-
+  public isShowDiv: boolean = false;  
   public possibleCameras: Camera[] = [];
-  
 
-  constructor(private addToCartService : AddToCartService) {
-    this.settings128 = new ScanSettings({
-      enabledSymbologies: [Barcode.Symbology.CODE128],
-      codeDuplicateFilter: 3000
-    });
-    this.settings39 = new ScanSettings({
-      enabledSymbologies: [Barcode.Symbology.CODE39],
-    });
-    this.activeSettings = this.settings128;
+  public searchArea: SearchArea;
 
-    CameraAccess.getCameras().then((cameras) => {
-      this.possibleCameras = cameras;
+
+  constructor(private addToCartService : AddToCartService, private matIconRegistry: MatIconRegistry,private domSanitizer: DomSanitizer, private svgBarcode: GetSvgBarcodeService) {
+
+
+      this.matIconRegistry.addSvgIconLiteral('barcodeicon', this.domSanitizer.bypassSecurityTrustHtml(this.svgBarcode.provideBarcodeIcon()));
+
+    this.settingsSymbologies = new ScanSettings({
+      enabledSymbologies: [Barcode.Symbology.CODE128,Barcode.Symbology.EAN13],
+      codeDuplicateFilter: 3000,
+      searchArea: { x: 0, y: 0.4, width: 1, height: 0.2 },
     });
+
+    this.activeSettings = this.settingsSymbologies;
 
     this.cameraSettings = {
       resolutionPreference: CameraSettings.ResolutionPreference.FULL_HD,
@@ -63,7 +60,6 @@ export class AppComponent  {
 
     this.setupCameraSettings();
   
-
   }
 
   public toggleGuiStyle(): void {
@@ -78,32 +74,21 @@ export class AppComponent  {
     this.scannedCodes = this.scannedCodes.concat(result.barcodes);
 
     // API CALL to add to the Cart the item that corresponds to result.barcode
-    //addToCart();
-    //let cart = new AddToCart
-    //let mycart = new CartAddEntry({cartId:'e4f6b7d5-ea5a-4ea7-a1ce-9f0c1a8e98f3',userId:'anonymous',productCode:'300938',quantity:1});
-    //let myModalService = new ModalService();
-    //this.addToCartService.getLog();
+
     this.addToCartService.addProductToCart(result.barcodes);
-    //this.addToCartService.addToCartHTTP();
-    //let myservice = new AddToCartService();
-    //myservice.getLog();
-    //myservice.printBarcode(result.barcodes);
-    //myservice.addToCart();
-    //myservice.addToCartHTTP();
-    //myservice.addProductToCart();
-
-
   }
 
   public setupCameraSettings(): void{
     this.cameraAccess = !this.cameraAccess;
     this.scanningPaused = !this.scanningPaused;
     this.visible = !this.visible;
-    
+    this.showCameraDiv();
+  
+  }
 
-
-
-
+  public showCameraDiv(): void{
+     
+      this.isShowDiv = !this.isShowDiv;  
   }
 
 }
